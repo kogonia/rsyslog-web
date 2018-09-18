@@ -62,7 +62,7 @@ $page = "<!DOCTYPE html>
   <body>
     <form name='form' action='' method='get'>
       <input style='width:150px; height:20px;' name='switch_ip' type='text' id='ip_to_find' placeholder='Введите ip' autofocus>
-      <input type='submit'>
+      <button type='submit' value='Submit'>Go</button>
     </form>
     <table width='100%' border='1' cellpadding='5' cellspacing='2'>
       <tr align='center'>
