@@ -82,36 +82,7 @@ $form_data =  trim($_POST['switch_ip']);
 $file = $form_data . ".log";
 $text = preg_replace("'  '", ' ', file_get_contents ("$file"));
 
-$rows = '';
-if (strpos($file, '172.21.199') !== false) {
-    foreach (explode("\n", $text) as $line){
-        preg_match('/(\w+\s+\d+\s\d\d:\d\d:\d\d)\s*[\d|\.]*\s*\d*\:*\s*(\w+\S+\[[\d|\.]+\])\s*%(\w+\s+\d+\s\d\d:\d\d:\d\d\s\d+)\s+(.+)/',$line,$matches);
-        $rows .= parce_to_row ($matches);
-    }
-} elseif (strpos($file, '172.21.200') !== false) {
-    foreach (explode("\n", $text) as $line){
-        preg_match('/(\w+\s+\d+\s\d\d:\d\d:\d\d)\s([\d|\.]+)\s*\d*\:*\s(\w+\s+\d+\s\d\d:\d\d:\d\d)[\s|\.\d]*\s*\S*\s+\%(.*)/',$line,$matches);
-        $rows .= parce_to_row ($matches);
-    }
-}
-
-$page .= "
-        <form name='form' action='' method='POST'>
-            <input style='width:150px; height:20px;' name='switch_ip' type='text' placeholder='Enter ip' autofocus>
-            <button type='submit' name='Log' value='Submit'>Log</button>
-            <button type='submit' name='info' value='Submit'>info</button>
-        </form>";
-$page .= spoiler($list,'List ip');
-
-$switch_info = 'Enter ip and press button [<b>info</b>]';
-if (isset($_POST['info'])) {
-    if (strpos($form_data,'172.') !== false) {
-        $switch_info = get_info($form_data);
-    }
-}
-
-$page.= spoiler($switch_info,'Switch info');
-$page .="
+$table ="
         <table width='100%' border='1' cellpadding='5' cellspacing='2'>
             <tr align='center'>
                 <td><b>Date</b></td>
@@ -119,8 +90,45 @@ $page .="
                 <td><b>Switch Date</b></td>
                 <td><b>Switch Log</b></td>
             </tr>";
-$page .= $rows . "
-        </table>
+
+$log_table = 'Enter ip and press button [<b>Log</b>]';
+if ((isset($_POST['Log']) || isset($_POST['info+log'])) && (strpos($file, '172.21.199') !== false)) {
+    $log_table = $table;
+    foreach (explode("\n", $text) as $line){
+        preg_match('/(\w+\s+\d+\s\d\d:\d\d:\d\d)\s*[\d|\.]*\s*\d*\:*\s*(\w+\S+\[[\d|\.]+\])\s*%(\w+\s+\d+\s\d\d:\d\d:\d\d\s\d+)\s+(.+)/',$line,$matches);
+        $log_table .= parce_to_row ($matches);
+    }
+    $log_table .= "
+        </table>";
+} elseif ((isset($_POST['Log']) || isset($_POST['info+log'])) && (strpos($file, '172.21.200') !== false)) {
+    $log_table = $table;
+    foreach (explode("\n", $text) as $line){
+        preg_match('/(\w+\s+\d+\s\d\d:\d\d:\d\d)\s([\d|\.]+)\s*\d*\:*\s(\w+\s+\d+\s\d\d:\d\d:\d\d)[\s|\.\d]*\s*\S*\s+\%(.*)/',$line,$matches);
+        $log_table .= parce_to_row ($matches);
+    }
+    $log_table .= "
+        </table>";
+}
+
+$page .= "
+        <form name='form' action='' method='POST'>
+            <input style='width:150px; height:20px;' name='switch_ip' type='text' placeholder='Enter ip' autofocus>
+            <button type='submit' name='Log' value='Submit'>Log</button>
+            <button type='submit' name='info' value='Submit'>info</button>
+            <button type='submit' name='info+log' value='Submit'>info+Log</button>
+
+        </form>";
+$page .= spoiler($list,'List ip');
+
+$switch_info = 'Enter ip and press button [<b>info</b>]';
+if (isset($_POST['info']) || isset($_POST['info+log'])) {
+    if (strpos($form_data,'172.') !== false) {
+        $switch_info = get_info($form_data);
+    }
+}
+$page.= spoiler($log_table,'Log');
+$page.= spoiler($switch_info,'Switch info');
+$page .= "
     </body>
 </html>";
 
