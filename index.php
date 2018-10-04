@@ -20,7 +20,7 @@ function parce_to_row($match) {
 function get_info($ip) {
   $resulr = $ip . "<br/>";
   $result .= shell_exec("/bin/bash switch_info.sh $ip");
-  return wordwrap ($result,80,"<br/>\n");
+  return $result;
 }
 
 if ($handle = opendir('.')) {
