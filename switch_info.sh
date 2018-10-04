@@ -26,7 +26,7 @@ do
     arr+=("<tr allign='center'><td>" ${arrDescr[$c]} "</td><td>" ${arrAdminStatus[$c]} "</td><td>" ${arrAlias[$c]} "</td></tr>")
 done
 echo -e "[ $ip ] <b>$sysName</b><br/>"
-echo -e "${sysDescr//$'\n'/<br\/>}"
+echo -e "${sysDescr//$'\n'/<br/>}"
 echo -e "<table border='1' cellpadding='5'>"
 echo -e "${arr[@]}"
 echo -e "</table>"
