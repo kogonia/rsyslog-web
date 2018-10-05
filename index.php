@@ -17,12 +17,6 @@ function parce_to_row($match) {
     return $row;
 }
 
-function get_info($ip) {
-    $resulr = $ip . "<br/>";
-    $result .= shell_exec("/bin/bash switch_info.sh $ip");
-    return $result;
-}
-
 function spoiler($data,$name) {
     return "
         <div class='spoiler'>
@@ -32,6 +26,11 @@ function spoiler($data,$name) {
                 <hr/>
             </div>
         </div>";
+}
+
+function get_info($key,$ip) {
+    $result = shell_exec("/bin/bash switch_info.sh $key $ip");
+    return $result;
 }
 
 if ($handle = opendir('.')) {
@@ -80,7 +79,7 @@ $page = "<!DOCTYPE html>
 
 $form_data =  trim($_POST['switch_ip']);
 $file = $form_data . ".log";
-$text = preg_replace("'  '", ' ', file_get_contents ("$file"));
+$text = preg_replace("'  '", ' ', file_get_contents("$file"));
 
 $table ="
         <table width='100%' border='1' cellpadding='5' cellspacing='2'>
@@ -116,14 +115,29 @@ $page .= "
             <button type='submit' name='Log' value='Submit'>Log</button>
             <button type='submit' name='info' value='Submit'>info</button>
             <button type='submit' name='info+log' value='Submit'>info+Log</button>
-
+            <button type='submit' name='switch_name' value='Submit'>Get Names</button>
         </form>";
-$page .= spoiler($list,'List ip');
+
+if (isset($_POST['switch_name'])) {
+    $list_names = "
+        <table border='0'>";
+    foreach (explode("<br/>",$list) as $line) {
+        if ($line != '') {
+            $list_names .= get_info('name',$line);
+        }
+    }
+    $list_names .= "
+        </table>";
+    $page .= spoiler($list_names,'ip+Names');
+} else {
+    $page .= spoiler($list,'List ip');
+}
+
 
 $switch_info = 'Enter ip and press button [<b>info</b>]';
 if (isset($_POST['info']) || isset($_POST['info+log'])) {
     if (strpos($form_data,'172.') !== false) {
-        $switch_info = get_info($form_data);
+        $switch_info = get_info('info',$form_data);
     }
 }
 $page.= spoiler($log_table,'Log');
