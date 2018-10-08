@@ -43,6 +43,12 @@ if ($handle = opendir('.')) {
     closedir($handle);
 }
 
+function mstp_count($log) {
+    $count = substr_count($log,'MSTP');
+    return $count;
+
+}
+
 $page = "<!DOCTYPE html>
 <html>
     <head>
@@ -108,6 +114,10 @@ if ((isset($_POST['Log']) || isset($_POST['info+log'])) && (strpos($file, '172.2
     $log_table .= "
         </table>";
 }
+
+$count = mstp_count($log_table);
+if ($count !=0)
+    echo "Количество запией MSTP для <b>$form_data: [ $count ]</b><br/><br/>";
 
 $page .= "
         <form name='form' action='' method='POST'>
