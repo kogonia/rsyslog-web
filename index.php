@@ -33,21 +33,32 @@ function get_info($key,$ip) {
     return $result;
 }
 
+function mstp_ip_count($log) {
+    $count = substr_count($log,'MSTP');
+    return $count;
+}
+
+function mstp($files) {
+	foreach (explode("<br/>",$files) as $line) {
+        $content = file_get_contents("$line");
+        if (strpos($content, 'MSTP') !== false) {
+    	    echo str_replace('.log','',$line) . " have MSTP in log";
+	    }
+
+    }
+   
+}
+
 if ($handle = opendir('.')) {
-    $list="";
+    $files   = "";
     while (false !== ($files_list = readdir($handle))) {
         if (strpos($files_list, '.log') !== false && strpos($files_list, '.gz') == false) {
-            $list .= str_replace('.log','',$files_list) . "<br/>";
+            $files   .= $files_list . "<br/>";
         }
     }
     closedir($handle);
 }
-
-function mstp_count($log) {
-    $count = substr_count($log,'MSTP');
-    return $count;
-
-}
+$list_ip = str_replace('.log','',$files);
 
 $page = "<!DOCTYPE html>
 <html>
@@ -83,8 +94,8 @@ $page = "<!DOCTYPE html>
     </head>
     <body>";
 
-$form_data =  trim($_POST['switch_ip']);
-$file = $form_data . ".log";
+$ip_input = trim($_POST['switch_ip_input']);
+$file = $ip_input . ".log";
 $text = preg_replace("'  '", ' ', file_get_contents("$file"));
 
 $table ="
@@ -115,43 +126,51 @@ if ((isset($_POST['Log']) || isset($_POST['info+log'])) && (strpos($file, '172.2
         </table>";
 }
 
-$count = mstp_count($log_table);
-if ($count !=0)
-    echo "Количество запией MSTP для <b>$form_data: [ $count ]</b><br/><br/>";
+$mstp_on_ip = mstp_ip_count($log_table);
+if ($mstp_on_ip !=0) {
+    echo "Count of MSTP for <b>$ip_input: [ $mstp_on_ip ]</b><br/><br/>";
+}
 
 $page .= "
-        <form name='form' action='' method='POST'>
-            <input style='width:150px; height:20px;' name='switch_ip' type='text' placeholder='Enter ip' autofocus>
+        <form name='form_1' action='' method='POST'>
+            <input style='width:150px; height:20px;' name='switch_ip_input' type='text' placeholder='Enter ip' autofocus>
             <button type='submit' name='Log' value='Submit'>Log</button>
             <button type='submit' name='info' value='Submit'>info</button>
             <button type='submit' name='info+log' value='Submit'>info+Log</button>
             <button type='submit' name='switch_name' value='Submit'>Get Names</button>
-        </form>";
+            <button type='submit' name='mstp' value='Submit'>MSTP ?</button>
+        </form><br/>";
 
 if (isset($_POST['switch_name'])) {
-    $list_names = "
+    $snmp_names = "
         <table border='0'>";
-    foreach (explode("<br/>",$list) as $line) {
+    foreach (explode("<br/>",$list_ip) as $line) {
         if ($line != '') {
-            $list_names .= get_info('name',$line);
+            $snmp_names .= get_info('name',$line);
         }
     }
-    $list_names .= "
+    $snmp_names .= "
         </table>";
-    $page .= spoiler($list_names,'ip+Names');
+    $page .= spoiler($snmp_names,'ip+Names');
 } else {
-    $page .= spoiler($list,'List ip');
+    $page .= spoiler($list_ip,'List ip');
 }
 
 
 $switch_info = 'Enter ip and press button [<b>info</b>]';
 if (isset($_POST['info']) || isset($_POST['info+log'])) {
-    if (strpos($form_data,'172.') !== false) {
-        $switch_info = get_info('info',$form_data);
+    if (strpos($ip_input,'172.') !== false) {
+        $switch_info = get_info('info',$ip_input);
     }
 }
 $page.= spoiler($log_table,'Log');
 $page.= spoiler($switch_info,'Switch info');
+
+if (isset($_POST['mstp'])) {
+	$mstp_count = mstp($files);
+}
+$page .= $mstp_count;
+
 $page .= "
     </body>
 </html>";
