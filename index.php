@@ -1,10 +1,12 @@
 <?php
 
-function parce_to_row($match) {
-    $date         =  $match[1];
-    $host         =  $match[2];
-    $switch_date  =  $match[3];
-    $switch_log   =  $match[4];
+function parce_to_row($line) {
+    global $file;
+    $matches=parce_log_string($file,$line);
+    $date         =  $matches[1];
+    $host         =  $matches[2];
+    $switch_date  =  $matches[3];
+    $switch_log   =  $matches[4];
     if (isset($date)) {
         $row .= "
             <tr>
@@ -15,6 +17,15 @@ function parce_to_row($match) {
             </tr>";
     }
     return $row;
+}
+
+function parce_log_string($file,$line) {
+    if (strpos($file, '172.21.199') !== false) {
+        preg_match('/(\w+\s+\d+\s\d\d:\d\d:\d\d)\s*[\d|\.]*\s*\d*\:*\s*(\w+\S+\[[\d|\.]+\])\s*%(\w+\s+\d+\s\d\d:\d\d:\d\d\s\d+)\s+(.+)/',$line,$matches);
+    } elseif (strpos($file, '172.21.200') !== false) {
+        preg_match('/(\w+\s+\d+\s\d\d:\d\d:\d\d)\s([\d|\.]+)\s*\d*\:*\s(\w+\s+\d+\s\d\d:\d\d:\d\d)[\s|\.\d]*\s*\S*\s+\%(.*)/',$line,$matches);
+    }
+    return $matches;
 }
 
 function spoiler($data,$name) {
@@ -39,13 +50,24 @@ function mstp_ip_count($log) {
 }
 
 function mstp($files) {
+    $mstp_table = "
+        <table border='0'>";
 	foreach (explode("<br/>",$files) as $line) {
-        $content = file_get_contents("$line");
-        if (strpos($content, 'MSTP') !== false) {
-    	    echo str_replace('.log','',$line) . " have MSTP in log";
+        $content = file_get_contents($line);
+        if (strripos($content, 'MSTP') !== false) {
+            $string  = preg_match('/.*PTSM.*/',strrev($content),$matches);
+            $parced_data = parce_log_string($line,strrev($matches[0]));
+            $switch_date = $parced_data[3];
+            $mstp_table .= "
+            <tr>
+                <td>" . str_replace('.log','',$line) . "</td>
+                <td>Last MSTP in log: <b>" . $switch_date . "</b></td>
+            </tr>";
 	    }
-
     }
+    $mstp_table .="
+        </table>";
+    return $mstp_table;
    
 }
 
@@ -60,7 +82,8 @@ if ($handle = opendir('.')) {
 }
 $list_ip = str_replace('.log','',$files);
 
-$page = "<!DOCTYPE html>
+$page = "
+<!DOCTYPE html>
 <html>
     <head>
         <style type='text/css'>
@@ -97,6 +120,11 @@ $page = "<!DOCTYPE html>
 $ip_input = trim($_POST['switch_ip_input']);
 $file = $ip_input . ".log";
 $text = preg_replace("'  '", ' ', file_get_contents("$file"));
+if (isset($_POST['mstp'])) {
+	$mstp_count = mstp($files);
+}
+$page .= $mstp_count;
+
 
 $table ="
         <table width='100%' border='1' cellpadding='5' cellspacing='2'>
@@ -108,19 +136,10 @@ $table ="
             </tr>";
 
 $log_table = 'Enter ip and press button [<b>Log</b>]';
-if ((isset($_POST['Log']) || isset($_POST['info+log'])) && (strpos($file, '172.21.199') !== false)) {
+if (isset($_POST['Log']) || isset($_POST['info+log'])) {
     $log_table = $table;
-    foreach (explode("\n", $text) as $line){
-        preg_match('/(\w+\s+\d+\s\d\d:\d\d:\d\d)\s*[\d|\.]*\s*\d*\:*\s*(\w+\S+\[[\d|\.]+\])\s*%(\w+\s+\d+\s\d\d:\d\d:\d\d\s\d+)\s+(.+)/',$line,$matches);
-        $log_table .= parce_to_row ($matches);
-    }
-    $log_table .= "
-        </table>";
-} elseif ((isset($_POST['Log']) || isset($_POST['info+log'])) && (strpos($file, '172.21.200') !== false)) {
-    $log_table = $table;
-    foreach (explode("\n", $text) as $line){
-        preg_match('/(\w+\s+\d+\s\d\d:\d\d:\d\d)\s([\d|\.]+)\s*\d*\:*\s(\w+\s+\d+\s\d\d:\d\d:\d\d)[\s|\.\d]*\s*\S*\s+\%(.*)/',$line,$matches);
-        $log_table .= parce_to_row ($matches);
+    foreach (explode("\n", $text) as $line) {
+        $log_table .= parce_to_row ($line);
     }
     $log_table .= "
         </table>";
@@ -128,7 +147,7 @@ if ((isset($_POST['Log']) || isset($_POST['info+log'])) && (strpos($file, '172.2
 
 $mstp_on_ip = mstp_ip_count($log_table);
 if ($mstp_on_ip !=0) {
-    echo "Count of MSTP for <b>$ip_input: [ $mstp_on_ip ]</b><br/><br/>";
+    echo "Count of MSTP for <b>$ip_input: [ $mstp_on_ip ]</b>";
 }
 
 $page .= "
@@ -165,12 +184,6 @@ if (isset($_POST['info']) || isset($_POST['info+log'])) {
 }
 $page.= spoiler($log_table,'Log');
 $page.= spoiler($switch_info,'Switch info');
-
-if (isset($_POST['mstp'])) {
-	$mstp_count = mstp($files);
-}
-$page .= $mstp_count;
-
 $page .= "
     </body>
 </html>";
