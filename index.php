@@ -39,7 +39,7 @@ function spoiler($data,$name) {
         </div>";
 }
 
-function get_info($key,$ip) {
+function get_snmp_info($key,$ip) {
     $result = shell_exec("/bin/bash switch_info.sh $key $ip");
     return $result;
 }
@@ -48,8 +48,7 @@ function mstp_ip_count($log) {
     $count = substr_count($log,'MSTP');
     return $count;
 }
-
-function mstp($files) {
+function mstp($files,$arr) {
     $mstp_table = "
         <table border='0'>";
 	foreach (explode("<br/>",$files) as $line) {
@@ -58,17 +57,28 @@ function mstp($files) {
             $string  = preg_match('/.*PTSM.*/',strrev($content),$matches);
             $parced_data = parce_log_string($line,strrev($matches[0]));
             $switch_date = $parced_data[3];
+            $ip = str_replace('.log','',$line);
             $mstp_table .= "
             <tr>
-                <td>" . str_replace('.log','',$line) . "</td>
-                <td>Last MSTP in log: <b>" . $switch_date . "</b></td>
+                <td>mstp: ["  . $ip          .    "]</td>
+                <td><b>"      . $arr[$ip]    . "</b></td>
+                <td>at <b>"   . $switch_date . "</b></td>
             </tr>";
 	    }
     }
     $mstp_table .="
         </table>";
     return $mstp_table;
-   
+}
+
+function get_name_from_file($file_name) {
+    $data = file($file_name);
+    $List_ip = array();
+    foreach($data as $line) {
+        $explode = explode("<tab>", $line);
+        $List_ip[$explode[0]] = trim($explode[1]);
+    }
+    return $List_ip;
 }
 
 if ($handle = opendir('.')) {
@@ -81,6 +91,7 @@ if ($handle = opendir('.')) {
     closedir($handle);
 }
 $list_ip = str_replace('.log','',$files);
+
 
 $page = "
 <!DOCTYPE html>
@@ -117,16 +128,29 @@ $page = "
     </head>
     <body>";
 
+$arr_ip_name = array();
+$arr_ip_name = get_name_from_file("ip_and_names.txt");
+$list_ip_name = "
+                <table border='0'>";
+foreach($arr_ip_name as $key => $value) {
+    $list_ip_name .= "
+                    <tr>
+                        <td>" . $key   . "</td>
+                        <td>" . $value . "</td>
+                    </tr>";
+}
+$list_ip_name .= "
+                </table>";
+
 $ip_input = trim($_POST['switch_ip_input']);
 $file = $ip_input . ".log";
 $text = preg_replace("'  '", ' ', file_get_contents("$file"));
 if (isset($_POST['mstp'])) {
-	$mstp_count = mstp($files);
+	$mstp_count = mstp($files,$arr_ip_name);
 }
 $page .= $mstp_count;
 
-
-$table ="
+$table = "
         <table width='100%' border='1' cellpadding='5' cellspacing='2'>
             <tr align='center'>
                 <td><b>Date</b></td>
@@ -138,7 +162,7 @@ $table ="
 $log_table = 'Enter ip and press button [<b>Log</b>]';
 if (isset($_POST['Log']) || isset($_POST['info+log'])) {
     $log_table = $table;
-    foreach (explode("\n", $text) as $line) {
+    foreach (explode("\n",$text) as $line) {
         $log_table .= parce_to_row ($line);
     }
     $log_table .= "
@@ -156,30 +180,25 @@ $page .= "
             <button type='submit' name='Log' value='Submit'>Log</button>
             <button type='submit' name='info' value='Submit'>info</button>
             <button type='submit' name='info+log' value='Submit'>info+Log</button>
-            <button type='submit' name='switch_name' value='Submit'>Get Names</button>
+            <button type='submit' name='switch_name' value='Submit'>Update Names</button>
             <button type='submit' name='mstp' value='Submit'>MSTP ?</button>
-        </form><br/>";
-
+        </form>";
 if (isset($_POST['switch_name'])) {
-    $snmp_names = "
-        <table border='0'>";
+    $ip_and_name = "";
     foreach (explode("<br/>",$list_ip) as $line) {
-        if ($line != '') {
-            $snmp_names .= get_info('name',$line);
+        if ($line !== "") {
+            $name = get_snmp_info('name',$line);
+            $ip_and_name .= $name;
         }
     }
-    $snmp_names .= "
-        </table>";
-    $page .= spoiler($snmp_names,'ip+Names');
-} else {
-    $page .= spoiler($list_ip,'List ip');
+    file_put_contents("ip_and_names.txt",$ip_and_name);
 }
 
-
+$page .= spoiler($list_ip_name,'List ip');
 $switch_info = 'Enter ip and press button [<b>info</b>]';
 if (isset($_POST['info']) || isset($_POST['info+log'])) {
     if (strpos($ip_input,'172.') !== false) {
-        $switch_info = get_info('info',$ip_input);
+        $switch_info = get_snmp_info('info',$ip_input);
     }
 }
 $page.= spoiler($log_table,'Log');
