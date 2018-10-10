@@ -31,10 +31,8 @@ function info {
 }
 
 function name {
-    echo -e "<tr>"
     sysName=$(snmpwalk -v 2c -c $community $ip sysName | awk -F ':' '{print $4}')
-    echo -e "<td>${ip}</td><td> - </td><td>${sysName}</td>"
-    echo -e "</tr>"
+    echo -e "${ip}<tab>${sysName}"
 }
 
 key=$1
