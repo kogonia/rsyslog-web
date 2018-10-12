@@ -145,6 +145,7 @@ $list_ip_name .= "
 $ip_input = trim($_POST['switch_ip_input']);
 $file = $ip_input . ".log";
 $text = preg_replace("'  '", ' ', file_get_contents("$file"));
+
 if (isset($_POST['mstp'])) {
 	$mstp_count = mstp($files,$arr_ip_name);
 }
@@ -162,9 +163,14 @@ $table = "
 $log_table = 'Enter ip and press button [<b>Log</b>]';
 if (isset($_POST['Log']) || isset($_POST['info+log'])) {
     $log_table = $table;
+    $foo='';
+    $bar='';
     foreach (explode("\n",$text) as $line) {
-        $log_table .= parce_to_row ($line);
+        $foo = parce_to_row($line);
+        $foo .= $bar;
+        $bar = $foo;
     }
+    $log_table .= $bar;
     $log_table .= "
         </table>";
 }
