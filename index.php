@@ -21,7 +21,7 @@ function parce_to_row($line) {
 
 function parce_log_string($file,$line) {
     if (strpos($file, '172.21.199') !== FALSE) {
-        preg_match('/(\w+\s+\d+\s\d\d:\d\d:\d\d)\s*[\d|\.]*\s*\d*\:*\s*(\w+\S+\[[\d|\.]+\])\s*%(\w+\s+\d+\s\d\d:\d\d:\d\d\s\d+)\s+(.+)/',$line,$matches);
+        preg_match('/(\w+\s+\d+\s\d\d:\d\d:\d\d)\s*[\d|\.]*\s*\d*\:*\s*(\w+\S+\[[\d|\.]+\])\s*%(\w+\s+\d+\s\d\d:\d\d:\d\d)\s\d+\s+(.+)/',$line,$matches);
     } elseif (strpos($file, '172.21.200') !== FALSE) {
         preg_match('/(\w+\s+\d+\s\d\d:\d\d:\d\d)\s([\d|\.]+)\s*\d*\:*\s(\w+\s+\d+\s\d\d:\d\d:\d\d)[\s|\.\d]*\s*\S*\s+\%(.*)/',$line,$matches);
     }
@@ -48,7 +48,9 @@ function mstp_ip_count($log) {
     $count = substr_count($log,'MSTP');
     return $count;
 }
+
 function mstp($files,$arr) {
+    $arr_for_sort = array();
     $mstp_table = "
         <table border='0'>";
 	foreach (explode("<br/>",$files) as $line) {
@@ -58,13 +60,18 @@ function mstp($files,$arr) {
             $parced_data = parce_log_string($line,strrev($matches[0]));
             $switch_date = $parced_data[3];
             $ip = str_replace('.log','',$line);
-            $mstp_table .= "
+            $data = "
             <tr>
                 <td>mstp: ["  . $ip          .    "]</td>
                 <td><b>"      . $arr[$ip]    . "</b></td>
                 <td>at <b>"   . $switch_date . "</b></td>
             </tr>";
+            $arr_for_sort[strtotime($switch_date)] = $data;
 	    }
+    }
+    krsort($arr_for_sort);
+    foreach($arr_for_sort as $key => $value) {
+        $mstp_table .= $value;
     }
     $mstp_table .="
         </table>";
@@ -157,7 +164,7 @@ $file = $ip_input . ".log";
 $text = preg_replace("'  '", ' ', file_get_contents("$file"));
 
 if (isset($_POST['mstp'])) {
-	$mstp_count = mstp($files,$arr_ip_name);
+	$mstp_count = mstp($files, $arr_ip_name);
 }
 $page .= $mstp_count;
 
