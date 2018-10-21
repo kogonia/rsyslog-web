@@ -20,9 +20,9 @@ function parce_to_row($line) {
 }
 
 function parce_log_string($file,$line) {
-    if (strpos($file, '172.21.199') !== false) {
+    if (strpos($file, '172.21.199') !== FALSE) {
         preg_match('/(\w+\s+\d+\s\d\d:\d\d:\d\d)\s*[\d|\.]*\s*\d*\:*\s*(\w+\S+\[[\d|\.]+\])\s*%(\w+\s+\d+\s\d\d:\d\d:\d\d\s\d+)\s+(.+)/',$line,$matches);
-    } elseif (strpos($file, '172.21.200') !== false) {
+    } elseif (strpos($file, '172.21.200') !== FALSE) {
         preg_match('/(\w+\s+\d+\s\d\d:\d\d:\d\d)\s([\d|\.]+)\s*\d*\:*\s(\w+\s+\d+\s\d\d:\d\d:\d\d)[\s|\.\d]*\s*\S*\s+\%(.*)/',$line,$matches);
     }
     return $matches;
@@ -53,7 +53,7 @@ function mstp($files,$arr) {
         <table border='0'>";
 	foreach (explode("<br/>",$files) as $line) {
         $content = file_get_contents($line);
-        if (strripos($content, 'MSTP') !== false) {
+        if (strripos($content, 'MSTP') !== FALSE) {
             $string  = preg_match('/.*PTSM.*/',strrev($content),$matches);
             $parced_data = parce_log_string($line,strrev($matches[0]));
             $switch_date = $parced_data[3];
@@ -71,27 +71,37 @@ function mstp($files,$arr) {
     return $mstp_table;
 }
 
-function get_name_from_file($file_name) {
-    $data = file($file_name);
+function get_name_from_file($file_name,$list_ip) {
+    $data = file_get_contents($file_name);
     $List_ip = array();
-    foreach($data as $line) {
-        $explode = explode("<tab>", $line);
-        $List_ip[$explode[0]] = trim($explode[1]);
+    foreach (explode("<br/>",$list_ip) as $ip) {
+        if ($ip !== "") {
+            if (stristr($data, $ip) !== FALSE) {
+                foreach(explode("\n",$data) as $line) {
+                    $f_ip = explode("<tab>", $line);
+                    if ($ip === $f_ip[0]) {
+                        $List_ip[$ip] = trim($f_ip[1]);
+                        break;
+                    }
+                }
+            } else  {
+                $List_ip[$ip] = '';
+            }
+        }
     }
     return $List_ip;
 }
 
 if ($handle = opendir('.')) {
     $files   = "";
-    while (false !== ($files_list = readdir($handle))) {
-        if (strpos($files_list, '.log') !== false && strpos($files_list, '.gz') == false) {
+    while (FALSE !== ($files_list = readdir($handle))) {
+        if (strpos($files_list, '.log') !== FALSE && strpos($files_list, '.gz') == FALSE) {
             $files   .= $files_list . "<br/>";
         }
     }
     closedir($handle);
 }
 $list_ip = str_replace('.log','',$files);
-
 
 $page = "
 <!DOCTYPE html>
@@ -129,7 +139,7 @@ $page = "
     <body>";
 
 $arr_ip_name = array();
-$arr_ip_name = get_name_from_file("ip_and_names.txt");
+$arr_ip_name = get_name_from_file("ip_and_names.txt",$list_ip);
 $list_ip_name = "
                 <table border='0'>";
 foreach($arr_ip_name as $key => $value) {
@@ -203,7 +213,7 @@ if (isset($_POST['switch_name'])) {
 $page .= spoiler($list_ip_name,'List ip');
 $switch_info = 'Enter ip and press button [<b>info</b>]';
 if (isset($_POST['info']) || isset($_POST['info+log'])) {
-    if (strpos($ip_input,'172.') !== false) {
+    if (strpos($ip_input,'172.') !== FALSE) {
         $switch_info = get_snmp_info('info',$ip_input);
     }
 }
