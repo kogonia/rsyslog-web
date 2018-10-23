@@ -204,6 +204,7 @@ $page .= "
             <button type='submit' name='info' value='Submit'>info</button>
             <button type='submit' name='info+log' value='Submit'>info+Log</button>
             <button type='submit' name='switch_name' value='Submit'>Update Names</button>
+            <button type='submit' name='bgp' value='Submit'>BGP ?</button>
             <button type='submit' name='mstp' value='Submit'>MSTP ?</button>
         </form>";
 if (isset($_POST['switch_name'])) {
@@ -215,6 +216,17 @@ if (isset($_POST['switch_name'])) {
         }
     }
     file_put_contents("ip_and_names.txt",$ip_and_name);
+}
+
+/*
+ Edit this block
+ bgp_key1 = use same as in 'switch_info.sh' in 'case' construction
+ ip_BGP_router_N = ip of your BGP Router
+*/
+if (isset($_POST['bgp'])) {
+    $BGP  = get_snmp_info('bgp_key1',"ip_BGP_router_1");
+    $BGP .= get_snmp_info('bgp_key2',"ip_BGP_router_2");
+    echo "$BGP";
 }
 
 $page .= spoiler($list_ip_name,'List ip');
