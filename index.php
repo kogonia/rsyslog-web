@@ -1,5 +1,10 @@
 <?php
 
+//ini_set('display_errors', 1);
+
+/*
+ * Function section
+ */
 function parce_to_row($line) {
     global $file;
     $matches=parce_log_string($file,$line);
@@ -99,6 +104,61 @@ function get_name_from_file($file_name,$list_ip) {
     return $List_ip;
 }
 
+function info($ip, $com="cisco", $oid) {
+    return snmp2_walk($ip, $com, $oid, 10000000, 0);
+}
+
+function DelWord($val) {
+    return substr(strstr($val," "), 1);
+}
+
+function snmp_int($ip, $com="cisco") {
+
+    $host           = array_map ('DelWord', info ($ip, $com, "sysName"));
+    $sysDescr       = array_map ('DelWord', info ($ip, $com, "sysDescr"));
+    $ifIndex        = array_map ('DelWord', info ($ip, $com, "ifIndex"));
+    $ifDescr        = array_map ('DelWord', info ($ip, $com, "ifDescr"));
+    $ifAlias        = array_map ('DelWord', info ($ip, $com, "ifAlias"));
+    $ifOperStatus   = array_map ('DelWord', info ($ip, $com, "ifOperStatus"));
+    $ifAdminStatus  = array_map ('DelWord', info ($ip, $com, "ifAdminStatus"));
+    $ifLastChange   = array_map ('DelWord', info ($ip, $com, "ifLastChange"));
+    $ifLastChange   = array_map ('DelWord', $ifLastChange);
+
+    $res = "<h3>$host[0]:</h3>
+        <table border='1' cellpadding='5' cellspacing='2'>
+            <tr align='center'>
+                <td>snmp №</td>
+                <td>Port</td>
+                <td>Description</td>
+                <td>Status</td>
+                <td>AdminStatus</td>
+                <td>LastChange</td>
+                <td style='text-align:right;vertical-align:top' rowspan=".count($ifIndex).">".nl2br(implode("<br />",$sysDescr))."</td>
+            </tr>";
+
+    for ($i=0; $i<count($ifIndex); $i++) {
+        if ((strpos(strtolower($ifDescr[$i]), 'vlan') === false) && (strpos(strtolower($ifDescr[$i]), 'loopback') === false)) {
+            $res .= "
+            <tr align='center'>
+                <td>" . $ifIndex[$i]        . "</td>
+                <td>" . $ifDescr[$i]        . "</td>
+                <td>" . $ifAlias[$i]        . "</td>
+                <td>" . $ifOperStatus[$i]   . "</td>
+                <td>" . $ifAdminStatus[$i]  . "</td>
+                <td>" . $ifLastChange[$i]   . "</td>
+            </tr>";
+        }
+    }
+
+    $res .= "
+        </table>";
+    return $res;
+}
+
+/*
+ * Code section
+ */
+
 if ($handle = opendir('.')) {
     $files   = "";
     while (FALSE !== ($files_list = readdir($handle))) {
@@ -164,37 +224,11 @@ $file = $ip_input . ".log";
 $text = preg_replace("'  '", ' ', file_get_contents("$file"));
 
 if (isset($_POST['mstp'])) {
-	$mstp_count = mstp($files, $arr_ip_name);
-}
-$page .= $mstp_count;
+    $mstp_info = mstp($files, $arr_ip_name);
+    print "$mstp_info
+        <hr/>";
 
-$table = "
-        <table width='100%' border='1' cellpadding='5' cellspacing='2'>
-            <tr align='center'>
-                <td><b>Date</b></td>
-                <td><b>Host</b></td>
-                <td><b>Switch Date</b></td>
-                <td><b>Switch Log</b></td>
-            </tr>";
-
-$log_table = 'Enter ip and press button [<b>Log</b>]';
-if (isset($_POST['Log']) || isset($_POST['info+log'])) {
-    $log_table = $table;
-    $foo='';
-    $bar='';
-    foreach (explode("\n",$text) as $line) {
-        $foo = parce_to_row($line);
-        $foo .= $bar;
-        $bar = $foo;
-    }
-    $log_table .= $bar;
-    $log_table .= "
-        </table>";
-}
-
-$mstp_on_ip = mstp_ip_count($log_table);
-if ($mstp_on_ip !=0) {
-    echo "Count of MSTP for <b>$ip_input: [ $mstp_on_ip ]</b>";
+//    $page      .= spoiler($mstp_count, 'MSTP Status');
 }
 
 $page .= "
@@ -207,37 +241,64 @@ $page .= "
             <button type='submit' name='bgp' value='Submit'>BGP ?</button>
             <button type='submit' name='mstp' value='Submit'>MSTP ?</button>
         </form>";
+
+$page .= spoiler($list_ip_name,'List ip');
+
+if (isset($_POST['Log']) || isset($_POST['info+log'])) {
+    $log_table = "
+        <table width='100%' border='1' cellpadding='5' cellspacing='2'>
+            <tr align='center'>
+                <td><b>Date</b></td>
+                <td><b>Host</b></td>
+                <td><b>Switch Date</b></td>
+                <td><b>Switch Log</b></td>
+            </tr>";
+    if ($mstp_on_ip !=0) {
+        echo "Count of MSTP for <b>$ip_input: [ $mstp_on_ip ]</b>";
+    }
+    $foo='';
+    $bar='';
+    foreach (explode("\n",$text) as $line) {
+        $foo = parce_to_row($line);
+        $foo.= $bar;
+        $bar = $foo;
+    }
+    $log_table .= $bar;
+    $log_table .= "
+        </table>";
+    $mstp_on_ip = mstp_ip_count($log_table);
+    $page.= spoiler($log_table,'Log');
+}
+
+if (isset($_POST['info']) || isset($_POST['info+log'])) {
+    if (strpos($ip_input,'172.') !== FALSE) {
+        $switch_info = snmp_int($ip_input);
+    }
+    $page.= spoiler($switch_info,'Switch info');
+}
+
 if (isset($_POST['switch_name'])) {
     $ip_and_name = "";
     foreach (explode("<br/>",$list_ip) as $line) {
         if ($line !== "") {
-            $name = get_snmp_info('name',$line);
-            $ip_and_name .= $name;
+            $name           = array_map('DelWord', info ($line, "cisco", "sysName"));
+            $ip_and_name   .= $line . "<tab>" . $name[0] . "\r\n";
         }
     }
     file_put_contents("ip_and_names.txt",$ip_and_name);
 }
-
 /*
- Edit this block
- bgp_key1 = use same as in 'switch_info.sh' in 'case' construction
- ip_BGP_router_N = ip of your BGP Router
-*/
+ * if (isset($_POST['mstp'])) {
+ *     $mstp_info = mstp($files, $arr_ip_name);
+ *     $page     .= spoiler($mstp_info, 'MSTP Status');
+ * }
+ */
 if (isset($_POST['bgp'])) {
-    $BGP  = get_snmp_info('bgp_key1',"ip_BGP_router_1");
-    $BGP .= get_snmp_info('bgp_key2',"ip_BGP_router_2");
-    echo "$BGP";
+    $BGP  = get_snmp_info('bgp_sw-x',"172.21.200.9");
+    $BGP .= get_snmp_info('bgp_ipx',"172.21.254.1");
+    $page.= spoiler($BGP, 'BGP Status');
 }
 
-$page .= spoiler($list_ip_name,'List ip');
-$switch_info = 'Enter ip and press button [<b>info</b>]';
-if (isset($_POST['info']) || isset($_POST['info+log'])) {
-    if (strpos($ip_input,'172.') !== FALSE) {
-        $switch_info = get_snmp_info('info',$ip_input);
-    }
-}
-$page.= spoiler($log_table,'Log');
-$page.= spoiler($switch_info,'Switch info');
 $page .= "
     </body>
 </html>";
