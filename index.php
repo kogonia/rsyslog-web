@@ -44,11 +44,6 @@ function spoiler($data,$name) {
         </div>";
 }
 
-function get_snmp_info($key,$ip) {
-    $result = shell_exec("/bin/bash switch_info.sh $key $ip");
-    return $result;
-}
-
 function mstp_ip_count($log) {
     $count = substr_count($log,'MSTP');
     return $count;
@@ -112,10 +107,10 @@ function DelWord($val) {
     return trim(substr(strstr($val," "), 1));
 }
 
-function snmp_int($ip, $com="cisco") {
+function snmp_info($ip, $com="cisco") {
 
-    $host           = array_map ('DelWord', info ($ip, $com, "1.3.6.1.2.1.1.5.0"));
-    $sysDescr       = array_map ('DelWord', info ($ip, $com, "1.3.6.1.2.1.1"));
+    $host           = array_map ('DelWord', info ($ip, $com, "1.3.6.1.2.1.1.5"));
+    $sysDescr       = array_map ('DelWord', info ($ip, $com, "1.3.6.1.2.1.1.1"));
     $ifIndex        = array_map ('DelWord', info ($ip, $com, "1.3.6.1.2.1.2.2.1.1"));
     $ifDescr        = array_map ('DelWord', info ($ip, $com, "1.3.6.1.2.1.2.2.1.2"));
     $ifAlias        = array_map ('DelWord', info ($ip, $com, "1.3.6.1.2.1.31.1.1.1.18"));
@@ -124,7 +119,7 @@ function snmp_int($ip, $com="cisco") {
     $ifLastChange   = array_map ('DelWord', info ($ip, $com, "1.3.6.1.2.1.2.2.1.9"));
     $ifLastChange   = array_map ('DelWord', $ifLastChange);
 
-    $res = "<h3>$host[0]:</h3>
+    $res = "<h3>$ip - $host[0]</h3>
         <table border='1' cellpadding='5' cellspacing='2'>
             <tr align='center'>
                 <td>snmp №</td>
@@ -313,7 +308,7 @@ if (isset($_POST['mstp'])) {
     print "$mstp_info
         <hr/>";
 
-//    $page      .= spoiler($mstp_count, 'MSTP Status');
+//    $page .= spoiler($mstp_count, 'MSTP Status');
 }
 
 $page .= "
@@ -338,9 +333,6 @@ if (isset($_POST['Log']) || isset($_POST['info+log'])) {
                 <td><b>Switch Date</b></td>
                 <td><b>Switch Log</b></td>
             </tr>";
-    if ($mstp_on_ip !=0) {
-        print "Count of MSTP for <b>$ip_input: [ $mstp_on_ip ]</b>";
-    }
     $foo='';
     $bar='';
     foreach (explode("\n",$text) as $line) {
@@ -352,12 +344,15 @@ if (isset($_POST['Log']) || isset($_POST['info+log'])) {
     $log_table .= "
         </table>";
     $mstp_on_ip = mstp_ip_count($log_table);
+    if ($mstp_on_ip !=0) {
+        print "Count of MSTP for <b>$ip_input: [ $mstp_on_ip ]</b>";
+    }
     $page.= spoiler($log_table,'Log');
 }
 
 if (isset($_POST['info']) || isset($_POST['info+log'])) {
     if (strpos($ip_input,'172.') !== FALSE) {
-        $switch_info = snmp_int($ip_input);
+        $switch_info = snmp_info($ip_input);
     }
     $page.= spoiler($switch_info,'Switch info');
 }
