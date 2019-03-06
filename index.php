@@ -109,19 +109,19 @@ function info($ip, $com="cisco", $oid) {
 }
 
 function DelWord($val) {
-    return substr(strstr($val," "), 1);
+    return trim(substr(strstr($val," "), 1));
 }
 
 function snmp_int($ip, $com="cisco") {
 
-    $host           = array_map ('DelWord', info ($ip, $com, "sysName"));
-    $sysDescr       = array_map ('DelWord', info ($ip, $com, "sysDescr"));
-    $ifIndex        = array_map ('DelWord', info ($ip, $com, "ifIndex"));
-    $ifDescr        = array_map ('DelWord', info ($ip, $com, "ifDescr"));
-    $ifAlias        = array_map ('DelWord', info ($ip, $com, "ifAlias"));
-    $ifOperStatus   = array_map ('DelWord', info ($ip, $com, "ifOperStatus"));
-    $ifAdminStatus  = array_map ('DelWord', info ($ip, $com, "ifAdminStatus"));
-    $ifLastChange   = array_map ('DelWord', info ($ip, $com, "ifLastChange"));
+    $host           = array_map ('DelWord', info ($ip, $com, "1.3.6.1.2.1.1.5.0"));
+    $sysDescr       = array_map ('DelWord', info ($ip, $com, "1.3.6.1.2.1.1"));
+    $ifIndex        = array_map ('DelWord', info ($ip, $com, "1.3.6.1.2.1.2.2.1.1"));
+    $ifDescr        = array_map ('DelWord', info ($ip, $com, "1.3.6.1.2.1.2.2.1.2"));
+    $ifAlias        = array_map ('DelWord', info ($ip, $com, "1.3.6.1.2.1.31.1.1.1.18"));
+    $ifOperStatus   = array_map ('DelWord', info ($ip, $com, "1.3.6.1.2.1.2.2.1.8"));
+    $ifAdminStatus  = array_map ('DelWord', info ($ip, $com, "1.3.6.1.2.1.2.2.1.7"));
+    $ifLastChange   = array_map ('DelWord', info ($ip, $com, "1.3.6.1.2.1.2.2.1.9"));
     $ifLastChange   = array_map ('DelWord', $ifLastChange);
 
     $res = "<h3>$host[0]:</h3>
@@ -152,6 +152,91 @@ function snmp_int($ip, $com="cisco") {
 
     $res .= "
         </table>";
+    return $res;
+}
+
+function UpTime($seconds) {
+    $obj = new DateTime();
+    $obj->setTimeStamp(time()+$seconds);
+    $data = (array)$obj->diff(new DateTime());
+ 
+    $index = array (
+        "y" => "y",
+        "m" => "m",
+        "d" => "d",
+        "h" => "h",
+        "min" => "i",
+        "sec" => "s"
+    );
+    $res = '';
+    foreach ($index as $key=>$i) {
+        if ($data[$i] !== 0) {
+            $res .= $data[$i] . $key . ' ';
+        }
+    }
+    return $res;
+}
+
+function snmp_bgp($ip, $com="cisco") {
+    $bgp_Array_status = array (
+        "1" => "IDLE",
+        "2" => "CONNECT",
+        "3" => "ACTIVE",
+        "4" => "OPENSENT",
+        "5" => "OPENCONFIRM",
+        "6" => "ESTABLISHED"
+    );
+    $bgp_Array_partner= array (
+        "1541250401"    => "AQUAFON [AS-51957]",
+        "1541250402"    => "AQUAFON [AS-51957]",
+        "1542217717"    => "Tiranov [AS-57882]",
+        "1572737353"    => "BISV [AS-47586]",
+        "2887122686"    => "C7206-CLNT [AS-65503]",
+        "3232286977"    => "ABAZA [AS-47282]",
+        "3284075525"    => "SYSTEMA [AS-57354]",
+        "3284075861"    => "GAGRA_NET [AS-204496]",
+        "3284075865"    => "GUDAUTA-TELECOM [AS-42938]",
+        "3575751513"    => "SOVINTEL [AS-3216]",
+        "185270277"     => "STP_BKP [AS-16345]",
+        "185270281"     => "GRX_MAIN [AS-3216]",
+        "185270285"     => "BEELINE_2 [AS-16345]",
+        "3579259377"    => "MTS [AS-8359]",
+        "3579259381"    => "MTS [AS-8359]",
+        "3648406609"    => "VimpelCom [AS-16345]",
+        "3648406613"    => "VimpelCom [AS-16345]"
+    );
+    $LocalAS    = array_map ('DelWord', info($ip, $com, "1.3.6.1.2.1.15.2"));
+    $LocalAddr  = array_map ('DelWord', info($ip, $com, "1.3.6.1.2.1.15.3.1.5"));
+    $PeerAddr   = array_map ('DelWord', info($ip, $com, "1.3.6.1.2.1.15.3.1.7"));
+    $PeerState  = array_map ('DelWord', info($ip, $com, "1.3.6.1.2.1.15.3.1.2"));
+    $Uptime     = array_map ('DelWord', info($ip, $com, "1.3.6.1.2.1.15.3.1.24"));
+
+    $Uptime     = array_map ('UpTime', $Uptime);
+    $res    = "
+        <table border='1' cellpadding='5' cellspacing='2'>
+            <tr align='center'>
+                <td colspan='5'> $ip - AS $LocalAS[0]</td>
+            </tr>
+            <tr align='center'>
+                <td>Local ip</td>
+                <td>Peer ip</td>
+                <td>Peer Name</td>
+                <td>Status</td>
+                <td>Uptime</td>
+            </tr>";
+
+    for ($i=0; $i<count($PeerAddr); $i++) {
+        $PeerName[$i]   = $bgp_Array_partner[ip2long($PeerAddr[$i])];
+        $PeerState[$i]  = $bgp_Array_status[$PeerState[$i]];
+        $res .= "
+            <tr align='center'>
+                <td>" . $LocalAddr[$i]  . "</td>
+                <td>" . $PeerAddr[$i]   . "</td>
+                <td>" . $PeerName[$i]   . "</td>
+                <td>" . $PeerState[$i]  . "</td>
+                <td>" . $Uptime[$i]  . "</td>
+            </tr>";
+    }
     return $res;
 }
 
@@ -254,7 +339,7 @@ if (isset($_POST['Log']) || isset($_POST['info+log'])) {
                 <td><b>Switch Log</b></td>
             </tr>";
     if ($mstp_on_ip !=0) {
-        echo "Count of MSTP for <b>$ip_input: [ $mstp_on_ip ]</b>";
+        print "Count of MSTP for <b>$ip_input: [ $mstp_on_ip ]</b>";
     }
     $foo='';
     $bar='';
@@ -287,15 +372,9 @@ if (isset($_POST['switch_name'])) {
     }
     file_put_contents("ip_and_names.txt",$ip_and_name);
 }
-/*
- * if (isset($_POST['mstp'])) {
- *     $mstp_info = mstp($files, $arr_ip_name);
- *     $page     .= spoiler($mstp_info, 'MSTP Status');
- * }
- */
+
 if (isset($_POST['bgp'])) {
-    $BGP  = get_snmp_info('bgp_sw-x',"172.21.200.9");
-    $BGP .= get_snmp_info('bgp_ipx',"172.21.254.1");
+    $BGP .= snmp_bgp("172.21.254.1");
     $page.= spoiler($BGP, 'BGP Status');
 }
 
@@ -303,6 +382,6 @@ $page .= "
     </body>
 </html>";
 
-echo $page;
+print "$page";
 
 ?>
