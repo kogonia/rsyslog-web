@@ -182,23 +182,7 @@ function snmp_bgp($ip, $com="cisco") {
         "6" => "ESTABLISHED"
     );
     $bgp_Array_partner= array (
-        "1541250401"    => "AQUAFON [AS-51957]",
-        "1541250402"    => "AQUAFON [AS-51957]",
-        "1542217717"    => "Tiranov [AS-57882]",
-        "1572737353"    => "BISV [AS-47586]",
-        "2887122686"    => "C7206-CLNT [AS-65503]",
-        "3232286977"    => "ABAZA [AS-47282]",
-        "3284075525"    => "SYSTEMA [AS-57354]",
-        "3284075861"    => "GAGRA_NET [AS-204496]",
-        "3284075865"    => "GUDAUTA-TELECOM [AS-42938]",
-        "3575751513"    => "SOVINTEL [AS-3216]",
-        "185270277"     => "STP_BKP [AS-16345]",
-        "185270281"     => "GRX_MAIN [AS-3216]",
-        "185270285"     => "BEELINE_2 [AS-16345]",
-        "3579259377"    => "MTS [AS-8359]",
-        "3579259381"    => "MTS [AS-8359]",
-        "3648406609"    => "VimpelCom [AS-16345]",
-        "3648406613"    => "VimpelCom [AS-16345]"
+        "ip2long($ip)_VALUE"    => "PEER_NAME [PEER_AS]"
     );
     $LocalAS    = array_map ('DelWord', info($ip, $com, "1.3.6.1.2.1.15.2"));
     $LocalAddr  = array_map ('DelWord', info($ip, $com, "1.3.6.1.2.1.15.3.1.5"));
